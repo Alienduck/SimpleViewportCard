@@ -201,11 +201,37 @@ function module.UpdateModel(self: CardType, model: Instance)
 	if self._modelRotateCon then
 		self._modelRotateCon:Disconnect()
 	end
+
 	self.VF_WorldModel:ClearAllChildren()
 	model.Parent = self.VF_WorldModel
+
+	-- Formule complexe pour placer la caméra à bonne distance
 	if model:IsA("Model") or model:IsA("BasePart") then
+		-- 1. Récupérer la taille (Size) de l'objet
+		local _, size
+		if model:IsA("Model") then
+			_, size = model:GetBoundingBox()
+		else
+			size = model.Size
+		end
+
+		-- 2. Placer le modèle au centre du monde
 		model:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, 0))
+
+		-- 3. La Formule Magique : Calcul de la distance
+		local radius = size.Magnitude / 2
+		local halfFov = math.rad(self.VF_Camera.FieldOfView) / 2
+		local perfectDistance = radius / math.sin(halfFov)
+
+		-- On rajoute 15% de marge pour que l'objet ne touche pas les bords de l'écran
+		local distanceWithMargin = perfectDistance * 1.15
+
+		-- 4. Positionner la caméra
+		-- On recule la caméra sur l'axe Z, et on la lève un peu sur l'axe Y pour une vue en légère plongée
+		local cameraPos = Vector3.new(0, radius * 0.5, distanceWithMargin)
+		self.VF_Camera.CFrame = CFrame.lookAt(cameraPos, Vector3.new(0, 0, 0))
 	end
+
 	self:ActiveModel(model)
 end
 
