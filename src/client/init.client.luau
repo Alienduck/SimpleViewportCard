@@ -32,6 +32,5 @@ screen.Enabled = true
 local card = Card.New({
 	Screen = screen,
 })
-card:Init()
 card:Control(false)
 ItemPicker.Init(card)
