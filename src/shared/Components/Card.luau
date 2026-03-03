@@ -32,6 +32,7 @@ export type CardType = {
 
 	_modelRotateCon: RBXScriptConnection,
 	_tweenAnimation: Tween?,
+	_tweenInfo: TweenInfo,
 
 	New: (props: Props) -> CardType,
 	Init: (self: CardType) -> (),
@@ -64,16 +65,17 @@ function module.New(props: Props): CardType
 	self.Desc = Instance.new("TextLabel")
 	self.Desc_UiTSC = Instance.new("UITextSizeConstraint")
 	self.props = props
+	self._tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
 
 	setmetatable(self, module)
+	self:Init()
 	return self
 end
 
 -- Helper
-local function Tweener(container: CanvasGroup, show: boolean)
+local function Tweener(card: CardType, show: boolean)
 	local goal = { GroupTransparency = show and 0 or 1 }
-	local TI: TweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-	local tween = TweenService:Create(container, TI, goal)
+	local tween = TweenService:Create(card.Container, card._tweenInfo, goal)
 	tween:Play()
 	return tween
 end
@@ -225,7 +227,7 @@ function module.Control(self: CardType, show: boolean)
 	end
 	self.props.Screen.Enabled = true
 	self.Container.GroupTransparency = 0
-	self._tweenAnimation = Tweener(self.Container, show)
+	self._tweenAnimation = Tweener(self, show)
 	if self._tweenAnimation then
 		self._tweenAnimation.Completed:Once(function(a0: Enum.PlaybackState)
 			if not show then
