@@ -47,6 +47,9 @@ function module.Init(card: Card.CardType)
 			Title = title and title.Value or nil,
 			Desc = desc and desc.Value or nil,
 		})
+		if not instance.Archivable then
+			return
+		end
 
 		print(`instance -> {instance}`)
 		card:UpdateModel(instance:Clone())
@@ -58,6 +61,10 @@ function module.Init(card: Card.CardType)
 
 		card:Control(false)
 		isShowing = false
+	end)
+
+	module.Player.AncestryChanged:Once(function(a0: Instance, a1: Instance?)
+		module.MouseClickCon:Disconnect()
 	end)
 end
 
