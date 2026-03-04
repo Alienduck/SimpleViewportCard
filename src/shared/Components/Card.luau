@@ -32,6 +32,7 @@ export type CardType = {
 
 	_modelRotateCon: RBXScriptConnection,
 	_tweenAnimation: Tween?,
+	_tweenInfo: TweenInfo,
 
 	New: (props: Props) -> CardType,
 	Init: (self: CardType) -> (),
@@ -39,7 +40,7 @@ export type CardType = {
 	UpdateModel: (self: CardType, model: Instance) -> (),
 	ActiveModel: (self: CardType, model: Instance) -> (),
 	Control: (self: CardType, show: boolean) -> (),
-} & typeof(module)
+} & typeof(module) -- Intersection type: CardType has these fields AND the methods from 'module'
 
 type TextProp = {
 	Title: string?,
@@ -48,7 +49,7 @@ type TextProp = {
 
 -- Constructor
 function module.New(props: Props): CardType
-	local self: CardType = {} :: CardType
+	local self: CardType = {} :: CardType -- Cast empty table to CardType to satisfy type checker
 	self.Container = Instance.new("CanvasGroup")
 	self.Container.Parent = props.Screen
 	self.Container_UiCorner = Instance.new("UICorner")
@@ -64,16 +65,17 @@ function module.New(props: Props): CardType
 	self.Desc = Instance.new("TextLabel")
 	self.Desc_UiTSC = Instance.new("UITextSizeConstraint")
 	self.props = props
+	self._tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
 
-	setmetatable(self, module)
+	setmetatable(self, module) -- Connects the instance to the module methods (OOP)
+	self:Init()
 	return self
 end
 
--- Helper
-local function Tweener(container: CanvasGroup, show: boolean)
+-- Helper: Handles the fade-in/fade-out animation of the card
+local function Tweener(card: CardType, show: boolean)
 	local goal = { GroupTransparency = show and 0 or 1 }
-	local TI: TweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-	local tween = TweenService:Create(container, TI, goal)
+	local tween = TweenService:Create(card.Container, card._tweenInfo, goal)
 	tween:Play()
 	return tween
 end
@@ -145,7 +147,7 @@ function module.Init(self: CardType)
 	title.Text = self.props.Title or "PlaceHolder"
 	title.AnchorPoint = Vector2.new(0.5, 0)
 	title.BackgroundTransparency = 1
-	title.Position = UDim2.fromScale(0.5, 0.55)
+	title.Position = UDim2.fromScale(0.5, 0.55) -- Positioned relative to parent size (Scale)
 	title.Size = UDim2.fromScale(1, 0.1)
 	title.Font = Enum.Font.Jura
 	title.TextScaled = true
@@ -199,19 +201,49 @@ function module.UpdateModel(self: CardType, model: Instance)
 	if self._modelRotateCon then
 		self._modelRotateCon:Disconnect()
 	end
+
 	self.VF_WorldModel:ClearAllChildren()
 	model.Parent = self.VF_WorldModel
+
+	-- Logic to center the camera on the model and fit it within the view
 	if model:IsA("Model") or model:IsA("BasePart") then
+		-- 1. Get the size of the object
+		local _, size -- Using '_' for the CFrame/Orientation because we only need the Size
+		if model:IsA("Model") then
+			_, size = model:GetBoundingBox() -- Returns orientation (CFrame) and size (Vector3)
+		else
+			size = model.Size
+		end
+
+		-- 2. Place the model at the center of the world
+		-- We reset the model's position to (0,0,0) to make camera positioning easier
 		model:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, 0))
+
+		-- 3. The Magic Formula: Distance calculation
+		-- Calculate the distance required to fit the object's radius within the camera's Field of View (FOV)
+		local radius = size.Magnitude / 2
+		local halfFov = math.rad(self.VF_Camera.FieldOfView) / 2
+		local perfectDistance = radius / math.sin(halfFov) -- Basic trigonometry to find hypotenuse
+
+		-- Add 5% margin so the object doesn't touch the screen edges
+		local distanceWithMargin = perfectDistance * 1.05
+
+		-- 4. Position the camera
+		-- Move the camera back on the Z axis, and raise it slightly on the Y axis for a slight top-down view
+		local cameraPos = Vector3.new(0, radius, distanceWithMargin)
+		self.VF_Camera.CFrame = CFrame.lookAt(cameraPos, Vector3.new(0, 0, 0))
 	end
+
 	self:ActiveModel(model)
 end
 
 -- Active model animation
 function module.ActiveModel(self: CardType, model: Instance)
+	-- Connect to PreRender to update the rotation every frame before the screen draws
 	self._modelRotateCon = RunService.PreRender:Connect(function()
 		if model:IsA("Model") or model:IsA("BasePart") then
 			local currentCFrame = model:GetPivot()
+			-- Rotate 1 degree on the Y axis relative to current orientation
 			model:PivotTo(currentCFrame * CFrame.Angles(0, math.rad(1), 0))
 		end
 	end)
@@ -219,15 +251,17 @@ end
 
 -- Control the card (show/hide)
 function module.Control(self: CardType, show: boolean)
+	-- Cancel any existing animation to prevent conflicts
 	if self._tweenAnimation then
 		self._tweenAnimation:Cancel()
 		self._tweenAnimation = nil
 	end
 	self.props.Screen.Enabled = true
 	self.Container.GroupTransparency = 0
-	self._tweenAnimation = Tweener(self.Container, show)
+	self._tweenAnimation = Tweener(self, show)
 	if self._tweenAnimation then
 		self._tweenAnimation.Completed:Once(function(a0: Enum.PlaybackState)
+			-- Disable the ScreenGui only after the hide animation finishes
 			if not show then
 				self.props.Screen.Enabled = false
 			end

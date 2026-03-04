@@ -6,7 +6,7 @@ local ItemPicker = require(ReplicatedStorage.Shared.Systems.ItemPicker)
 local player: Player = Players.LocalPlayer
 local playerGui: PlayerGui = player.PlayerGui
 local character: Model = player.Character or player.CharacterAdded:Wait()
-character.Archivable = true
+character.Archivable = true -- Must be true to allow cloning the character (e.g. for ViewportFrame)
 
 local conf = Instance.new("Configuration")
 conf.Name = "Configuration"
@@ -25,13 +25,12 @@ desc.Value = "WTF ? Is that YOU ??? (how you do that ?)"
 local screen: ScreenGui = Instance.new("ScreenGui")
 screen.Parent = playerGui
 screen.Name = "ScreenGui"
-screen.IgnoreGuiInset = true
+screen.IgnoreGuiInset = true -- Ignores the top bar inset, covering the full screen
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Enabled = true
 
 local card = Card.New({
 	Screen = screen,
 })
-card:Init()
 card:Control(false)
 ItemPicker.Init(card)
