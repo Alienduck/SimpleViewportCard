@@ -205,30 +205,30 @@ function module.UpdateModel(self: CardType, model: Instance)
 	self.VF_WorldModel:ClearAllChildren()
 	model.Parent = self.VF_WorldModel
 
-	-- Formule complexe pour placer la caméra à bonne distance
+	-- Complex formula to place the camera at the correct distance
 	if model:IsA("Model") or model:IsA("BasePart") then
-		-- 1. Récupérer la taille (Size) de l'objet
-		local _, size
+		-- 1. Get the size of the object
+		local _, size -- Using '_' because it's a useless variable
 		if model:IsA("Model") then
-			_, size = model:GetBoundingBox()
+			_, size = model:GetBoundingBox() -- This method return a tuple with the orientation and the size
 		else
 			size = model.Size
 		end
 
-		-- 2. Placer le modèle au centre du monde
+		-- 2. Place the model at the center of the world
 		model:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, 0))
 
-		-- 3. La Formule Magique : Calcul de la distance
+		-- 3. The Magic Formula: Distance calculation
 		local radius = size.Magnitude / 2
 		local halfFov = math.rad(self.VF_Camera.FieldOfView) / 2
 		local perfectDistance = radius / math.sin(halfFov)
 
-		-- On rajoute 15% de marge pour que l'objet ne touche pas les bords de l'écran
-		local distanceWithMargin = perfectDistance * 1.15
+		-- Add 15% margin so the object doesn't touch the screen edges (yes I'm cheating)
+		local distanceWithMargin = perfectDistance * 1.05
 
-		-- 4. Positionner la caméra
-		-- On recule la caméra sur l'axe Z, et on la lève un peu sur l'axe Y pour une vue en légère plongée
-		local cameraPos = Vector3.new(0, radius * 0.5, distanceWithMargin)
+		-- 4. Position the camera
+		-- Move the camera back on the Z axis, and raise it slightly on the Y axis for a slight top-down view
+		local cameraPos = Vector3.new(0, radius, distanceWithMargin)
 		self.VF_Camera.CFrame = CFrame.lookAt(cameraPos, Vector3.new(0, 0, 0))
 	end
 
